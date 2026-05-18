@@ -7,7 +7,7 @@ import {
 	type RegisterPayload,
 } from "@/services/authService";
 
-const tokenStorageKey = "braingrid_token";
+const authStorageKey = "braingrid_auth";
 
 const initialState: AuthState = {
 	user: null,
@@ -57,7 +57,7 @@ const authSlice = createSlice({
 			state.message = null;
 
 			if (typeof window !== "undefined") {
-				window.localStorage.removeItem(tokenStorageKey);
+				window.localStorage.removeItem(authStorageKey);
 			}
 		},
 		clearAuthFeedback(state) {
@@ -92,7 +92,10 @@ const authSlice = createSlice({
 				state.message = "Login successful";
 
 				if (typeof window !== "undefined") {
-					window.localStorage.setItem(tokenStorageKey, action.payload.token);
+					window.localStorage.setItem(
+						authStorageKey,
+						JSON.stringify({ token: action.payload.token, user: action.payload.user })
+					);
 				}
 			})
 			.addCase(loginThunk.rejected, (state, action) => {

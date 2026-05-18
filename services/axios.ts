@@ -12,7 +12,18 @@ apiClient.interceptors.request.use((config) => {
 		return config;
 	}
 
-	const token = window.localStorage.getItem("braingrid_token");
+	const rawAuth = window.localStorage.getItem("braingrid_auth");
+	const legacyToken = window.localStorage.getItem("braingrid_token");
+	let token: string | null = legacyToken;
+
+	if (rawAuth) {
+		try {
+			const parsedAuth = JSON.parse(rawAuth) as { token?: string };
+			token = parsedAuth.token ?? token;
+		} catch {
+			window.localStorage.removeItem("braingrid_auth");
+		}
+	}
 
 	if (token) {
 		config.headers.Authorization = `Bearer ${token}`;

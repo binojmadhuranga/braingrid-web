@@ -6,10 +6,31 @@ import { hydrateAuthFromStorage } from "@/features/auth/authSlice";
 import { store } from "./store";
 
 if (typeof window !== "undefined") {
-	const token = window.localStorage.getItem("braingrid_token");
+	const rawAuth = window.localStorage.getItem("braingrid_auth");
 
-	if (token) {
-		store.dispatch(hydrateAuthFromStorage({ token, user: null }));
+	if (rawAuth) {
+		try {
+			const parsedAuth = JSON.parse(rawAuth) as {
+				token?: string;
+				user?: {
+					id: number;
+					name: string;
+					email: string;
+					role: string;
+				};
+			};
+
+			if (parsedAuth.token) {
+				store.dispatch(
+					hydrateAuthFromStorage({
+						token: parsedAuth.token,
+						user: parsedAuth.user ?? null,
+					})
+				);
+			}
+		} catch {
+			window.localStorage.removeItem("braingrid_auth");
+		}
 	}
 }
 

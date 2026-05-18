@@ -8,8 +8,13 @@ import {
   selectAuthError,
   selectAuthLoading,
   selectAuthToken,
+  selectAuthUser,
 } from "@/features/auth/authSelectors";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+
+function getDashboardRoute(role?: string | null) {
+  return role === "ADMIN" ? "/dashboard/admin" : "/dashboard/user";
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,14 +22,15 @@ export default function LoginPage() {
   const isLoading = useAppSelector(selectAuthLoading);
   const error = useAppSelector(selectAuthError);
   const token = useAppSelector(selectAuthToken);
+  const user = useAppSelector(selectAuthUser);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   useEffect(() => {
     if (token) {
-      router.replace("/dashboard");
+      router.replace(getDashboardRoute(user?.role));
     }
-  }, [router, token]);
+  }, [router, token, user?.role]);
 
   useEffect(() => {
     dispatch(clearAuthFeedback());
@@ -36,7 +42,8 @@ export default function LoginPage() {
     const result = await dispatch(loginThunk({ email, password }));
 
     if (loginThunk.fulfilled.match(result)) {
-      router.replace("/dashboard");
+      const role = result.payload.user.role;
+      router.replace(getDashboardRoute(role));
     }
   };
 

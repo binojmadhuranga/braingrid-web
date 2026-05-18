@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { logout } from "@/features/auth/authSlice";
-import { selectAuthToken } from "@/features/auth/authSelectors";
+import { selectAuthRole, selectAuthToken } from "@/features/auth/authSelectors";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 
 const metrics = [
@@ -24,12 +24,18 @@ export default function AdminDashboardPage() {
 	const router = useRouter();
 	const dispatch = useAppDispatch();
 	const token = useAppSelector(selectAuthToken);
+	const role = useAppSelector(selectAuthRole);
 
 	useEffect(() => {
 		if (!token) {
 			router.replace("/login");
+			return;
 		}
-	}, [router, token]);
+
+		if (role && role !== "ADMIN") {
+			router.replace("/dashboard/user");
+		}
+	}, [router, role, token]);
 
 	const handleLogout = () => {
 		dispatch(logout());
