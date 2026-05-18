@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { logout } from "@/features/auth/authSlice";
 import { selectAuthRole, selectAuthToken } from "@/features/auth/authSelectors";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
@@ -25,6 +25,11 @@ export default function AdminDashboardPage() {
 	const dispatch = useAppDispatch();
 	const token = useAppSelector(selectAuthToken);
 	const role = useAppSelector(selectAuthRole);
+	const [isHydrated, setIsHydrated] = useState(false);
+
+	useEffect(() => {
+		setIsHydrated(true);
+	}, []);
 
 	useEffect(() => {
 		if (!token) {
