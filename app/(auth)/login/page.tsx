@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
@@ -50,6 +51,15 @@ export default function LoginPage() {
   return (
     <main className="auth-shell flex min-h-screen items-center justify-center px-6 py-12">
       <div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950/70 p-8 shadow-2xl shadow-black/30 backdrop-blur-xl">
+        <div className="flex justify-center mb-6">
+          <Image
+            src="/BrainGridLogo.png"
+            alt="BrainGrid Logo"
+            width={60}
+            height={60}
+            className="object-contain"
+          />
+        </div>
         <p className="text-sm uppercase tracking-[0.3em] text-cyan-200/80">
           Welcome back
         </p>
