@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { logout } from "@/features/auth/authSlice";
 import { selectAuthRole, selectAuthToken, selectAuthUser } from "@/features/auth/authSelectors";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
@@ -25,6 +25,11 @@ export default function UserDashboardPage() {
 	const token = useAppSelector(selectAuthToken);
 	const user = useAppSelector(selectAuthUser);
 	const role = useAppSelector(selectAuthRole);
+	const [isHydrated, setIsHydrated] = useState(false);
+
+	useEffect(() => {
+		setIsHydrated(true);
+	}, []);
 
 	useEffect(() => {
 		if (!token) {
@@ -51,7 +56,7 @@ export default function UserDashboardPage() {
 							User Dashboard
 						</p>
 						<h1 className="mt-3 text-3xl font-semibold text-white md:text-4xl">
-							{user ? `Welcome back, ${user.name}` : "Your personal workspace"}
+							{isHydrated && user ? `Welcome back, ${user.name}` : "Your personal workspace"}
 						</h1>
 						<p className="mt-2 max-w-2xl text-slate-300">
 							Sample user view for tracking daily progress, tasks, and account activity.
@@ -99,7 +104,7 @@ export default function UserDashboardPage() {
 							<div className="mt-5 space-y-3 text-sm text-slate-300">
 								<div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-slate-900/60 p-4">
 									<span>Email</span>
-									<span className="text-white">{user?.email ?? "binoj@gmail.com"}</span>
+									<span className="text-white">{isHydrated && user?.email ? user.email : "binoj@gmail.com"}</span>
 								</div>
 								<div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-slate-900/60 p-4">
 									<span>Membership</span>
