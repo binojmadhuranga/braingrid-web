@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { logout } from "@/features/auth/authSlice";
 import { selectAuthRole, selectAuthToken } from "@/features/auth/authSelectors";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { getAllUsers, type AdminUser } from "@/services/adminService";
 
 const metrics = [
 	{ label: "Active users", value: "1,284", delta: "+12%" },
@@ -26,6 +27,11 @@ export default function AdminDashboardPage() {
 	const token = useAppSelector(selectAuthToken);
 	const role = useAppSelector(selectAuthRole);
 	const [isHydrated, setIsHydrated] = useState(false);
+	const [users, setUsers] = useState<AdminUser[]>([]);
+	const [isUsersLoading, setIsUsersLoading] = useState(false);
+	const [usersError, setUsersError] = useState<string | null>(null);
+
+	const activeUsersCount = users.filter((user) => user.status === "ACTIVE").length;
 
 	useEffect(() => {
 		setIsHydrated(true);
@@ -41,6 +47,40 @@ export default function AdminDashboardPage() {
 			router.replace("/dashboard/user");
 		}
 	}, [router, role, token]);
+
+	useEffect(() => {
+		if (!token || role !== "ADMIN") {
+			return;
+		}
+
+		let isActive = true;
+
+		const loadUsers = async () => {
+			setIsUsersLoading(true);
+			setUsersError(null);
+
+			try {
+				const response = await getAllUsers();
+				if (isActive) {
+					setUsers(response);
+				}
+			} catch {
+				if (isActive) {
+					setUsersError("Unable to load users right now.");
+				}
+			} finally {
+				if (isActive) {
+					setIsUsersLoading(false);
+				}
+			}
+		};
+
+		void loadUsers();
+
+		return () => {
+			isActive = false;
+		};
+	}, [role, token]);
 
 	const handleLogout = () => {
 		dispatch(logout());
@@ -92,36 +132,91 @@ export default function AdminDashboardPage() {
 							</div>
 						</div>
 					))}
-				</section>
-
-				<section className="mt-8 grid gap-6 xl:grid-cols-[1.6fr_1fr]">
-					<div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-						<div className="flex items-center justify-between gap-4">
-							<h2 className="text-xl font-semibold text-white">Recent activity</h2>
-							<span className="text-sm text-slate-400">Updated 5 min ago</span>
-						</div>
-						<div className="mt-5 space-y-4">
-							{[
-								["New enterprise subscription", "Acme Corp upgraded to Pro"],
-								["Support queue", "3 tickets assigned to the billing team"],
-								["Security scan", "No critical issues detected"],
-							].map(([title, description]) => (
-								<article key={title} className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
-									<h3 className="font-medium text-white">{title}</h3>
-									<p className="mt-1 text-sm text-slate-300">{description}</p>
-								</article>
-							))}
+					<div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+						<p className="text-sm text-slate-400">Active users</p>
+						<div className="mt-3 flex items-end justify-between gap-3">
+							<span className="text-3xl font-semibold text-white">{isUsersLoading ? "..." : activeUsersCount}</span>
+							<span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-200">
+								Live
+							</span>
 						</div>
 					</div>
+				</section>
 
-					<aside className="rounded-3xl border border-white/10 bg-white/5 p-6">
-						<h2 className="text-xl font-semibold text-white">System alerts</h2>
-						<div className="mt-5 space-y-3">
-							{alerts.map((alert) => (
-								<div key={alert} className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
-									{alert}
-								</div>
-							))}
+				<section className="mt-8 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+					<div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+						<div className="flex flex-col gap-2 border-b border-white/10 pb-4 md:flex-row md:items-center md:justify-between">
+							<h2 className="text-xl font-semibold text-white">All users</h2>
+							<span className="text-sm text-slate-400">GET /api/admin/users</span>
+						</div>
+						{usersError ? (
+							<div className="mt-5 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
+								{usersError}
+							</div>
+						) : isUsersLoading ? (
+							<div className="mt-5 rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
+								Loading users...
+							</div>
+						) : users.length === 0 ? (
+							<div className="mt-5 rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
+								No users found.
+							</div>
+						) : (
+							<div className="mt-5 overflow-hidden rounded-2xl border border-white/10">
+								<table className="w-full border-collapse text-left text-sm">
+									<thead className="bg-slate-900/80 text-slate-300">
+										<tr>
+											<th className="px-4 py-3 font-medium">Name</th>
+											<th className="px-4 py-3 font-medium">Email</th>
+											<th className="px-4 py-3 font-medium">Role</th>
+											<th className="px-4 py-3 font-medium">Status</th>
+										</tr>
+									</thead>
+									<tbody>
+										{users.map((user) => (
+											<tr key={`${user.id}-${user.email}`} className="border-t border-white/10 bg-slate-950/50 text-slate-200">
+												<td className="px-4 py-3 font-medium text-white">{user.name}</td>
+												<td className="px-4 py-3">{user.email}</td>
+												<td className="px-4 py-3">{user.role}</td>
+												<td className="px-4 py-3">
+													<span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-200">
+														{user.status}
+													</span>
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
+						)}
+					</div>
+
+					<aside className="space-y-6">
+						<div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+							<h2 className="text-xl font-semibold text-white">System alerts</h2>
+							<div className="mt-5 space-y-3">
+								{alerts.map((alert) => (
+									<div key={alert} className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
+										{alert}
+									</div>
+								))}
+							</div>
+						</div>
+
+						<div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+							<h2 className="text-xl font-semibold text-white">Recent activity</h2>
+							<div className="mt-5 space-y-4">
+								{[
+									["New enterprise subscription", "Acme Corp upgraded to Pro"],
+									["Support queue", "3 tickets assigned to the billing team"],
+									["Security scan", "No critical issues detected"],
+								].map(([title, description]) => (
+									<article key={title} className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+										<h3 className="font-medium text-white">{title}</h3>
+										<p className="mt-1 text-sm text-slate-300">{description}</p>
+									</article>
+								))}
+							</div>
 						</div>
 					</aside>
 				</section>
