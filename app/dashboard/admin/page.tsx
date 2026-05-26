@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { logout } from "@/features/auth/authSlice";
 import { selectAuthRole, selectAuthToken } from "@/features/auth/authSelectors";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { getAllUsers, type AdminUser } from "@/services/adminService";
+import { getAllUsers, type AdminUser, updateUserStatus } from "@/services/adminService";
 
 const metrics = [
 	{ label: "Active users", value: "1,284", delta: "+12%" },
@@ -30,6 +30,8 @@ export default function AdminDashboardPage() {
 	const [users, setUsers] = useState<AdminUser[]>([]);
 	const [isUsersLoading, setIsUsersLoading] = useState(false);
 	const [usersError, setUsersError] = useState<string | null>(null);
+	const [updatingUserId, setUpdatingUserId] = useState<number | null>(null);
+	const [statusUpdateError, setStatusUpdateError] = useState<string | null>(null);
 
 	const activeUsersCount = users.filter((user) => user.status === "ACTIVE").length;
 
@@ -58,6 +60,7 @@ export default function AdminDashboardPage() {
 		const loadUsers = async () => {
 			setIsUsersLoading(true);
 			setUsersError(null);
+			setStatusUpdateError(null);
 
 			try {
 				const response = await getAllUsers();
@@ -85,6 +88,28 @@ export default function AdminDashboardPage() {
 	const handleLogout = () => {
 		dispatch(logout());
 		router.replace("/login");
+	};
+
+	const handleStatusToggle = async (user: AdminUser) => {
+		const nextStatus = user.status === "ACTIVE" ? "BLOCKED" : "ACTIVE";
+
+		setUpdatingUserId(user.id);
+		setStatusUpdateError(null);
+
+		try {
+			const updatedUser = await updateUserStatus(user.id, { status: nextStatus });
+			setUsers((currentUsers) =>
+				currentUsers.map((currentUser) => (currentUser.id === user.id ? updatedUser : currentUser))
+			);
+		} catch {
+			setStatusUpdateError("Unable to update this user's status right now.");
+		} finally {
+			setUpdatingUserId(null);
+		}
+	};
+
+	const formatStatusLabel = (status: AdminUser["status"]) => {
+		return status === "ACTIVE" ? "Active" : "Blocked";
 	};
 
 	return (
@@ -149,20 +174,25 @@ export default function AdminDashboardPage() {
 							<h2 className="text-xl font-semibold text-white">All users</h2>
 							<span className="text-sm text-slate-400">GET /api/admin/users</span>
 						</div>
+							{statusUpdateError ? (
+								<div className="mt-5 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
+									{statusUpdateError}
+								</div>
+							) : null}
 						{usersError ? (
-							<div className="mt-5 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
+								<div className={`${statusUpdateError ? "mt-4" : "mt-5"} rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200`}>
 								{usersError}
 							</div>
 						) : isUsersLoading ? (
-							<div className="mt-5 rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
+								<div className={`${statusUpdateError || usersError ? "mt-4" : "mt-5"} rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300`}>
 								Loading users...
 							</div>
 						) : users.length === 0 ? (
-							<div className="mt-5 rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
+								<div className={`${statusUpdateError || usersError ? "mt-4" : "mt-5"} rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300`}>
 								No users found.
 							</div>
 						) : (
-							<div className="mt-5 overflow-hidden rounded-2xl border border-white/10">
+								<div className={`${statusUpdateError || usersError ? "mt-4" : "mt-5"} overflow-hidden rounded-2xl border border-white/10`}>
 								<table className="w-full border-collapse text-left text-sm">
 									<thead className="bg-slate-900/80 text-slate-300">
 										<tr>
@@ -170,6 +200,7 @@ export default function AdminDashboardPage() {
 											<th className="px-4 py-3 font-medium">Email</th>
 											<th className="px-4 py-3 font-medium">Role</th>
 											<th className="px-4 py-3 font-medium">Status</th>
+												<th className="px-4 py-3 font-medium">Action</th>
 										</tr>
 									</thead>
 									<tbody>
@@ -179,10 +210,24 @@ export default function AdminDashboardPage() {
 												<td className="px-4 py-3">{user.email}</td>
 												<td className="px-4 py-3">{user.role}</td>
 												<td className="px-4 py-3">
-													<span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-200">
-														{user.status}
+														<span className={`rounded-full px-3 py-1 text-xs font-medium ${user.status === "ACTIVE" ? "bg-emerald-400/10 text-emerald-200" : "bg-rose-400/10 text-rose-200"}`}>
+															{formatStatusLabel(user.status)}
 													</span>
 												</td>
+													<td className="px-4 py-3">
+														<button
+															type="button"
+															onClick={() => void handleStatusToggle(user)}
+															disabled={updatingUserId === user.id}
+															className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+														>
+															{updatingUserId === user.id
+																? "Updating..."
+																: user.status === "ACTIVE"
+																	? "Block user"
+																	: "Activate user"}
+														</button>
+													</td>
 											</tr>
 										))}
 									</tbody>
