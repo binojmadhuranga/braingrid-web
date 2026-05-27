@@ -35,6 +35,14 @@ export default function AdminDashboardPage() {
 
 	const activeUsersCount = users.filter((user) => user.status === "ACTIVE").length;
 
+	const getUserKey = (user: AdminUser) => {
+		return user.rowKey ?? `${user.id ?? user.ID ?? user.userId ?? user._id ?? user.email ?? "user"}-${user.email ?? "unknown"}`;
+	};
+
+	const getUserId = (user: AdminUser) => {
+		return user.id ?? user.ID ?? user.userId ?? user._id;
+	};
+
 	useEffect(() => {
 		setIsHydrated(true);
 	}, []);
@@ -91,7 +99,7 @@ export default function AdminDashboardPage() {
 	};
 
 	const handleStatusToggle = async (user: AdminUser) => {
-		const userId = user.id ?? user.userId ?? user._id;
+		const userId = getUserId(user);
 
 		if (!userId) {
 			setStatusUpdateError("Unable to update this user's status right now.");
@@ -104,11 +112,20 @@ export default function AdminDashboardPage() {
 		setStatusUpdateError(null);
 
 		try {
-			const updatedUser = await updateUserStatus(userId, { status: nextStatus }, token);
+			await updateUserStatus(userId, { status: nextStatus }, token);
 			setUsers((currentUsers) =>
-				currentUsers.map((currentUser) =>
-					currentUser.id === userId ? { ...updatedUser, rowKey: currentUser.rowKey } : currentUser
-				)
+				currentUsers.map((currentUser) => {
+					const currentUserId = getUserId(currentUser);
+
+					if (currentUserId !== userId && getUserKey(currentUser) !== getUserKey(user)) {
+						return currentUser;
+					}
+
+					return {
+						...currentUser,
+						status: nextStatus,
+					};
+				})
 			);
 		} catch {
 			setStatusUpdateError("Unable to update this user's status right now.");
@@ -214,7 +231,7 @@ export default function AdminDashboardPage() {
 									</thead>
 									<tbody>
 										{users.map((user) => (
-											<tr key={user.rowKey ?? `${user.id ?? user.email ?? "user"}-${user.email ?? "unknown"}`} className="border-t border-white/10 bg-slate-950/50 text-slate-200">
+											<tr key={getUserKey(user)} className="border-t border-white/10 bg-slate-950/50 text-slate-200">
 												<td className="px-4 py-3 font-medium text-white">{user.name}</td>
 												<td className="px-4 py-3">{user.email}</td>
 												<td className="px-4 py-3">{user.role}</td>
@@ -227,10 +244,10 @@ export default function AdminDashboardPage() {
 														<button
 															type="button"
 															onClick={() => void handleStatusToggle(user)}
-															disabled={updatingUserId === (user.id ?? user.userId ?? user._id)}
+															disabled={updatingUserId === getUserId(user)}
 															className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
 														>
-															{updatingUserId === (user.id ?? user.userId ?? user._id)
+															{updatingUserId === getUserId(user)
 																? "Updating..."
 																: user.status === "ACTIVE"
 																	? "Block user"
